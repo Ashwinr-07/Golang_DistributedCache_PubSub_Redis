@@ -22,3 +22,15 @@ func NewCache(addr string) (*Cache, error) {
 		localCache: make(map[string][]byte),
 	}, nil
 }
+
+func (c *Cache) Set(ctx context.Context, key string, value []byte, expiration time.Duration) error {
+	if err := c.client.Set(ctx, key, value, expiration).Err(); err != nil {
+		return err
+	}
+
+	c.mutex.Lock()
+	c.localCache[key] = value
+	c.mutex.Unlock()
+
+	return nil
+}
