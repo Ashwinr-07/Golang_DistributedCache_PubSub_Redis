@@ -37,6 +37,21 @@ func (c *Cache) Set(ctx context.Context, key string, value []byte, expiration ti
 		return err
 	}
 
+	update, err := json.Marshal(struct {
+		Key   string `json:"key"`
+		Value []byte `json:"value"`
+	}{
+		Key:   key,
+		Value: value,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := c.client.Publish(ctx, "cache_updates", update).Err(); err != nil {
+		return err
+	}
+
 	c.mutex.Lock()
 	c.localCache[key] = value
 	c.mutex.Unlock()
@@ -63,9 +78,23 @@ func (c *Cache) Get(ctx context.Context, key string) ([]byte, error) {
 
 	return value, nil
 }
-
 func (c *Cache) Delete(ctx context.Context, key string) error {
 	if err := c.client.Del(ctx, key).Err(); err != nil {
+		return err
+	}
+
+	update, err := json.Marshal(struct {
+		Key   string `json:"key"`
+		Value []byte `json:"value"`
+	}{
+		Key:   key,
+		Value: nil,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := c.client.Publish(ctx, "cache_updates", update).Err(); err != nil {
 		return err
 	}
 
