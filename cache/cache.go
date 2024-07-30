@@ -1,9 +1,13 @@
 package cache
 
 import (
+    "context"
+    "encoding/json"
+    "fmt"
+    "time"
 	"sync"
 
-	"github.com/go-redis/redis/v8"
+    "github.com/go-redis/redis/v8"
 )
 
 type Cache struct {
@@ -15,20 +19,21 @@ type Cache struct {
 
 
 func NewCache(addr string) (*Cache, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr: addr,
-	})
+    client := redis.NewClient(&redis.Options{
+        Addr: addr,
+    })
 
-	cache := &Cache{
-		client:     client,
-		localCache: make(map[string][]byte),
-	}
+    cache := &Cache{
+        client:     client,
+        localCache: make(map[string][]byte),
+    }
 
-	if err := cache.subscribeToUpdates(); err != nil {
-		return nil, err
-	}
+    if err := cache.subscribeToUpdates(); err != nil {
+        client.Close() // Close the client if subscription fails
+        return nil, fmt.Errorf("failed to subscribe to updates: %w", err)
+    }
 
-	return cache, nil
+    return cache, nil
 }
 
 
@@ -57,6 +62,18 @@ func (c *Cache) Set(ctx context.Context, key string, value []byte, expiration ti
 	c.mutex.Unlock()
 
 	return nil
+}
+
+func (c *Cache) Close() error {
+    if c.subscribeConn != nil {
+        if err := c.subscribeConn.Close(); err != nil {
+            return fmt.Errorf("error closing subscribe connection: %w", err)
+        }
+    }
+    if err := c.client.Close(); err != nil {
+        return fmt.Errorf("error closing Redis client: %w", err)
+    }
+    return nil
 }
 
 func (c *Cache) Get(ctx context.Context, key string) ([]byte, error) {

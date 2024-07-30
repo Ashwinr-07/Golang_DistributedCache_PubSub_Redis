@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Ashwinr-07/Golang_DistributedCache_PubSub_Redis"
+	"github.com/Ashwinr-07/Golang_DistributedCache_PubSub_Redis/cache"
 )
 
 func main() {
