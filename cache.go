@@ -54,3 +54,15 @@ func (c *Cache) Get(ctx context.Context, key string) ([]byte, error) {
 
 	return value, nil
 }
+
+func (c *Cache) Delete(ctx context.Context, key string) error {
+	if err := c.client.Del(ctx, key).Err(); err != nil {
+		return err
+	}
+
+	c.mutex.Lock()
+	delete(c.localCache, key)
+	c.mutex.Unlock()
+
+	return nil
+}
