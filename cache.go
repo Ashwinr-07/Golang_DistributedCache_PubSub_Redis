@@ -34,3 +34,23 @@ func (c *Cache) Set(ctx context.Context, key string, value []byte, expiration ti
 
 	return nil
 }
+
+func (c *Cache) Get(ctx context.Context, key string) ([]byte, error) {
+	c.mutex.RLock()
+	if value, ok := c.localCache[key]; ok {
+		c.mutex.RUnlock()
+		return value, nil
+	}
+	c.mutex.RUnlock()
+
+	value, err := c.client.Get(ctx, key).Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	c.mutex.Lock()
+	c.localCache[key] = value
+	c.mutex.Unlock()
+
+	return value, nil
+}
